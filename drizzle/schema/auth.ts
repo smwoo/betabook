@@ -3,6 +3,11 @@ import { sqliteTable, text, integer, index } from "drizzle-orm/sqlite-core";
 
 export const user = sqliteTable("user", {
   id: text("id").primaryKey(),
+  // Unique case-insensitively via user_name_unique_idx (COLLATE NOCASE),
+  // declared in drizzle/migrations/0033_user_name_unique.sql rather than
+  // here — drizzle-kit can't express a collated index. The friendly
+  // uniqueness errors live in lib/auth.ts (sign-up) and actions/account.ts
+  // (rename); the index is the race-proof backstop.
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   emailVerified: integer("email_verified", { mode: "boolean" }).default(false).notNull(),

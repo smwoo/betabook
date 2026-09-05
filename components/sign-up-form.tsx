@@ -8,6 +8,7 @@ import { AppLink } from "@/components/ui/app-link";
 import { FORM_CARD_CLASS } from "@/components/ui/card";
 import { PageTitle } from "@/components/ui/typography";
 import { authClient } from "@/lib/auth-client";
+import { MAX_DISPLAY_NAME_LENGTH } from "@/lib/display-name";
 import { safeNextPath, signInUrl } from "@/lib/sign-in-redirect";
 
 export function SignUpForm({
@@ -98,9 +99,9 @@ export function SignUpForm({
           </div>
         </>
       )}
-      <TextField value={name} onChange={setName} isRequired>
-        <Label>Name</Label>
-        <Input placeholder="Your name" />
+      <TextField value={name} onChange={setName} isRequired maxLength={MAX_DISPLAY_NAME_LENGTH}>
+        <Label>Display name</Label>
+        <Input placeholder="How you'll appear to other climbers" />
       </TextField>
       <TextField value={email} onChange={setEmail} type="email" isRequired>
         <Label>Email</Label>
