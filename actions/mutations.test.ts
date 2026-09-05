@@ -2,9 +2,11 @@ import { env } from "cloudflare:test";
 import { eq } from "drizzle-orm";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createClimb, deleteSend, updateClimb, updateSend } from "@/actions";
+import { createClimb, deleteSend, updateClimb, updateDisplayName, updateSend } from "@/actions";
 import { createDb } from "@/db/client";
-import { climbs, journalEntries, sends } from "@/db/schema";
+import { climbs, journalEntries, sends, user } from "@/db/schema";
+import { SESSION_EXPIRED_MESSAGE } from "@/lib/action-result";
+import { DISPLAY_NAME_TAKEN_MESSAGE } from "@/lib/display-name";
 import { seedFixtureSend, seedFixtureTree, seedFixtureUser } from "@/test/fixtures";
 
 /** The action boundary must never throw — Next.js redacts uncaught
@@ -294,6 +296,62 @@ describe("climb type immutability (DB trigger)", () => {
     }
     expect(messages.join("\n")).toContain("cannot change climb type with logged sends");
     expect((await db.select().from(climbs).where(eq(climbs.id, 1)).get())?.type).toBe("boulder");
+  });
+});
+
+describe("updateDisplayName action boundary", () => {
+  function nameFormData(name: string): FormData {
+    const formData = new FormData();
+    formData.set("name", name);
+    return formData;
+  }
+
+  async function currentName(): Promise<string | undefined> {
+    const row = await db.select().from(user).where(eq(user.id, "test-user")).get();
+    return row?.name;
+  }
+
+  beforeAll(async () => {
+    await seedFixtureUser(db, { id: "name-holder", name: "Taken Name" });
+  });
+
+  it("renames the signed-in user, trimming the input", async () => {
+    const result = await updateDisplayName(nameFormData("  Fresh Name  "));
+    expect(result).toEqual({ ok: true, value: undefined });
+    expect(await currentName()).toBe("Fresh Name");
+  });
+
+  it("rejects a name another user holds, case-insensitively", async () => {
+    const result = await updateDisplayName(nameFormData("taken NAME"));
+    expect(result).toEqual({ ok: false, error: DISPLAY_NAME_TAKEN_MESSAGE });
+    expect(await currentName()).not.toBe("taken NAME");
+  });
+
+  it("lets a user re-save their own name to change only its case", async () => {
+    expect(await updateDisplayName(nameFormData("case test name"))).toEqual({
+      ok: true,
+      value: undefined,
+    });
+    expect(await updateDisplayName(nameFormData("Case Test Name"))).toEqual({
+      ok: true,
+      value: undefined,
+    });
+    expect(await currentName()).toBe("Case Test Name");
+  });
+
+  it("rejects a blank name", async () => {
+    expect(await updateDisplayName(nameFormData("   "))).toEqual({
+      ok: false,
+      error: "Display name is required",
+    });
+  });
+
+  it("returns the friendly session message when signed out", async () => {
+    sessionState.userId = null;
+    expect(await updateDisplayName(nameFormData("Whoever"))).toEqual({
+      ok: false,
+      error: SESSION_EXPIRED_MESSAGE,
+    });
   });
 });
 

@@ -87,10 +87,13 @@ export async function seedManyAreas(
 
 type FixtureUserOverrides = Partial<typeof user.$inferInsert> & { id: string };
 
-/** Inserts a minimal `user` row for send-query tests; `id` must be unique per call. */
+/** Inserts a minimal `user` row for send-query tests; `id` must be unique per
+ * call. The default name derives from the id because names are unique
+ * (user_name_unique_idx) — a shared "Test Climber" literal would make any
+ * second seeded user violate the index. */
 export async function seedFixtureUser(db: Database, overrides: FixtureUserOverrides) {
   const row = {
-    name: "Test Climber",
+    name: `Test Climber ${overrides.id}`,
     email: `${overrides.id}@example.com`,
     ...overrides,
   };

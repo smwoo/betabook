@@ -520,7 +520,7 @@ describe("getUserSentClimbIds", () => {
   });
 
   it("returns an empty set for a user with no sends", async () => {
-    await seedFixtureUser(db, { id: "test-user-4", name: "Also No Sends" });
+    await seedFixtureUser(db, { id: "test-user-4", name: "Still No Sends" });
     const ids = await getUserSentClimbIds(db, "test-user-4");
     expect(ids).toEqual(new Set());
   });

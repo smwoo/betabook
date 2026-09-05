@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { DeleteAccountButton } from "@/components/delete-account-button";
+import { DisplayNameForm } from "@/components/display-name-form";
 import { ExportSendsButton } from "@/components/export-sends-button";
 import { PrivacyControls } from "@/components/privacy-controls";
 import { ProductTour } from "@/components/product-tour";
@@ -81,6 +82,13 @@ export default async function AccountPage() {
       </section>
 
       <div className="grid gap-4 md:grid-cols-2">
+        <AccountSection
+          title="Display name"
+          description="How your name appears to other climbers. Names are unique across Betabook."
+        >
+          <DisplayNameForm initialName={name} />
+        </AccountSection>
+
         <AccountSection title="Appearance" description="Choose how Betabook looks on this device.">
           <div className="flex items-center justify-between gap-3">
             <span className="text-sm font-medium">Theme</span>

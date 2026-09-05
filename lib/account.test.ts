@@ -4,7 +4,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { createDb } from "@/db/client";
 import { changeRequests, climbs, sends, user } from "@/db/schema";
-import { deleteAccountPendingChangeRequests, deleteAccountSends } from "@/lib/account";
+import {
+  deleteAccountPendingChangeRequests,
+  deleteAccountSends,
+  uniqueDisplayName,
+} from "@/lib/account";
 import { seedFixtureSend, seedFixtureTree, seedFixtureUser } from "@/test/fixtures";
 import { resetDb } from "@/test/reset-db";
 
@@ -123,5 +127,26 @@ describe("deleteAccountPendingChangeRequests", () => {
     const decided = await db.select().from(changeRequests).where(eq(changeRequests.id, 702)).get();
     expect(decided).toBeDefined();
     expect(decided?.requestedBy).toBeNull();
+  });
+});
+
+describe("uniqueDisplayName", () => {
+  it("returns the trimmed base when nobody holds it", async () => {
+    expect(await uniqueDisplayName(db, "  Fresh OAuth Name  ")).toBe("Fresh OAuth Name");
+  });
+
+  it("suffixes past a taken name, matching case-insensitively", async () => {
+    await seedFixtureUser(db, { id: "account-test-user-c", name: "Google Person" });
+    expect(await uniqueDisplayName(db, "google person")).toBe("google person 2");
+  });
+
+  it("skips suffixes that are themselves taken", async () => {
+    await seedFixtureUser(db, { id: "account-test-user-c", name: "Google Person" });
+    await seedFixtureUser(db, { id: "account-test-user-d", name: "Google Person 2" });
+    expect(await uniqueDisplayName(db, "Google Person")).toBe("Google Person 3");
+  });
+
+  it("falls back to a default for a blank name", async () => {
+    expect(await uniqueDisplayName(db, "   ")).toBe("Climber");
   });
 });
