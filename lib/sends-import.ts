@@ -2,6 +2,7 @@ import { format as formatDate, isValid, parse } from "date-fns";
 import Papa from "papaparse";
 
 import { parseGrade, type ClimbType } from "@/lib/grades";
+import { decodeHtmlEntities } from "@/lib/html-entities";
 import {
   ASCENT_STYLES,
   GRADE_FEEL_VALUES,
@@ -811,15 +812,21 @@ export function normalizeImportRows(
   for (const [rowIndex, row] of parsed.rows.entries()) {
     const fail = (reason: string) => invalid.push({ rowIndex, raw: row, reason });
     const cell = (column: string | null) => (column ? (row[column] ?? "").trim() : "");
+    /** Sendage stores its text HTML-encoded and exports it that way, so prose
+     * arrives as "I&rsquo;ve" and names as "Salt &amp; Pepper". Only the
+     * free-text fields are decoded: a value-mapped cell is a key into a
+     * mapping built from the raw text, and `raw` has to keep matching the
+     * source file for the failed-rows export. */
+    const textCell = (column: string | null) => decodeHtmlEntities(cell(column));
 
-    const climbName = cell(mapping.climbName);
+    const climbName = textCell(mapping.climbName);
     if (!climbName) {
       fail("Missing climb name");
       continue;
     }
 
-    const areaName = cell(mapping.areaName) || null;
-    const areaHints = mapping.areaHints.flatMap((column) => splitAreaHint(cell(column)));
+    const areaName = textCell(mapping.areaName) || null;
+    const areaHints = mapping.areaHints.flatMap((column) => splitAreaHint(textCell(column)));
 
     const rawAscentStyle = cell(mapping.ascentStyle);
     const mappedAscentStyle = rawAscentStyle ? ascentStyleMapping[rawAscentStyle] : undefined;
@@ -861,7 +868,7 @@ export function normalizeImportRows(
       warn("rating", rowIndex, `"${rawRating}"`);
     }
 
-    const rawComment = cell(mapping.comment);
+    const rawComment = textCell(mapping.comment);
     if (rawComment.length > MAX_COMMENT_LENGTH) {
       warn("comment", rowIndex, `${rawComment.length} characters`);
     }
