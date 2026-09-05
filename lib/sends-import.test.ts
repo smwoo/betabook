@@ -900,6 +900,62 @@ describe("normalizeImportRows", () => {
     ]);
   });
 
+  // Sendage stores its text HTML-encoded and exports it that way, so an
+  // untouched import files comments reading "I&rsquo;ve" and names that no
+  // climb in the database matches.
+  it("decodes HTML entities in the free-text columns", () => {
+    const { valid } = normalizeImportRows(
+      csv([
+        row({
+          Climb: "Salt &amp; Pepper",
+          Area: "Caf&eacute; Wall",
+          Country: "C&ocirc;te d&rsquo;Ivoire",
+          Comments: "6 try&rsquo;s in total &mdash; couldn&rsquo;t do the moves",
+        }),
+      ]),
+      FULL_MAPPING,
+      ASCENT_STYLE_MAPPING,
+      CLIMB_TYPE_MAPPING,
+      GRADE_FEEL_MAPPING,
+      "iso",
+      { today: TODAY },
+    );
+    expect(valid[0]).toMatchObject({
+      climbName: "Salt & Pepper",
+      areaName: "Café Wall",
+      areaHints: ["Côte d’Ivoire"],
+      comment: "6 try’s in total — couldn’t do the moves",
+    });
+  });
+
+  it("keeps the undecoded row for the failed-rows export", () => {
+    const source = row({ Climb: "", Comments: "I&rsquo;ve" });
+    const { invalid } = normalizeImportRows(
+      csv([source]),
+      FULL_MAPPING,
+      ASCENT_STYLE_MAPPING,
+      CLIMB_TYPE_MAPPING,
+      GRADE_FEEL_MAPPING,
+      "iso",
+      { today: TODAY },
+    );
+    expect(invalid[0].raw).toEqual(source);
+  });
+
+  it("measures a comment against the length cap after decoding", () => {
+    const { valid, warnings } = normalizeImportRows(
+      csv([row({ Comments: "&amp;".repeat(MAX_COMMENT_LENGTH) })]),
+      FULL_MAPPING,
+      ASCENT_STYLE_MAPPING,
+      CLIMB_TYPE_MAPPING,
+      GRADE_FEEL_MAPPING,
+      "iso",
+      { today: TODAY },
+    );
+    expect(valid[0].comment).toBe("&".repeat(MAX_COMMENT_LENGTH));
+    expect(warnings).toEqual([]);
+  });
+
   // The area used to be required, which turned every row of an export with
   // no area column (KAYA's) into "Missing area name". It's now a filter the
   // match step applies when present and skips when not.
